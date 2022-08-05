@@ -1,4 +1,4 @@
-module github.com/orn-id/mq-router
+module github.com/sofyan48/mq-router
 
 go 1.18
 

@@ -5,7 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
-	mq "github.com/orn-id/mq-router"
+	mq "github.com/sofyan48/mq-router"
 )
 
 var DefaultSpanName = "sqs.message"

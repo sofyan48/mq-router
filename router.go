@@ -10,7 +10,7 @@ import (
 
 // MessageAttributeNameRoute is a MessageAttribute name used as a routing key by
 // the Router.
-const MessageAttributeNameRoute = "route"
+const MessageAttributeNameRoute = "path"
 const MessageAttributeNameMethod = "method"
 
 // Router will route a message based on MessageAttributes to other registered Handlers.

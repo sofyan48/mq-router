@@ -19,7 +19,7 @@ type Router struct {
 
 	// Resolver maps a Message to a string identifier used to match to a registered Handler. The
 	// default implementation returns a MessageAttribute named "route".
-	Resolver func(*Message) (string, bool)
+	Resolver func(*Message) (string, string, bool)
 
 	// A map of handlers to route to. The return value of Resolver should match a key in this map.
 	handlers map[string]Handler
@@ -47,33 +47,45 @@ func (r *Router) Method(method string) {
 	r.Lock()
 	defer r.Unlock()
 
-	r.handlers[r.routes] = r.handle
 	r.handlers[method] = r.handle
+	r.handlers[r.routes] = r.handle
 }
 
 // HandleMessage satisfies the Handler interface.
 func (r *Router) HandleMessage(m *Message) error {
-	key, ok := r.Resolver(m)
+	key, path, ok := r.Resolver(m)
 	if !ok {
 		return errors.New("no routing key for message")
 	}
+	okPath := false
+	switch path {
+	case "POST", "PUT", "DELETE", "PATCH", "GET":
+		_, okPath = r.handlers[path]
+	default:
+		return errors.New("no method key for message")
+	}
+	h, okRoute := r.handlers[key]
 
-	if h, ok := r.handlers[key]; ok {
+	if okRoute && okPath {
 		return h.HandleMessage(m)
 	}
 
 	return fmt.Errorf("no handler matched for routing key: %s", key)
 }
 
-func defaultResolver(m *Message) (string, bool) {
+func defaultResolver(m *Message) (string, string, bool) {
+	p := ""
+	d, ok := m.SQSMessage.MessageAttributes[MessageAttributeNameMethod]
+
+	if ok {
+		p = aws.StringValue(d.StringValue)
+	}
+
 	r := ""
 	v, ok := m.SQSMessage.MessageAttributes[MessageAttributeNameRoute]
 	if ok {
 		r = aws.StringValue(v.StringValue)
 	}
-	d, ok := m.SQSMessage.MessageAttributes[MessageAttributeNameMethod]
-	if ok {
-		r = aws.StringValue(d.StringValue)
-	}
-	return r, ok
+
+	return r, p, ok
 }

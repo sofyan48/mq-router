@@ -3,6 +3,7 @@ package mq
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -45,9 +46,15 @@ type Logger interface {
 	Println(...interface{})
 }
 
-type discardLogger struct{}
+type discardLogger struct {
+	Debug bool
+}
 
-func (l *discardLogger) Println(v ...interface{}) {}
+func (l *discardLogger) Println(v ...interface{}) {
+	if l.Debug {
+		log.Println(v)
+	}
+}
 
 // Server is responsible for running the request loop to receive messages
 // from a single SQS Queue. It manages the message processing pipeline.
@@ -109,7 +116,8 @@ type Server struct {
 	deletionsCh chan *Message
 	errorsCh    chan error
 
-	done chan struct{}
+	debug bool
+	done  chan struct{}
 }
 
 // ServerDefaults is used by NewServer to initialize a Server with defaults.
@@ -165,7 +173,6 @@ func NewServer(queueURL string, h Handler, opts ...func(*Server)) *Server {
 	for _, opt := range opts {
 		opt(s)
 	}
-
 	s.messagesCh = make(chan *Message)
 	s.deletionsCh = make(chan *Message, s.BatchDeleteMaxMessages)
 	s.errorsCh = make(chan error)
@@ -176,9 +183,17 @@ func NewServer(queueURL string, h Handler, opts ...func(*Server)) *Server {
 	return s
 }
 
+func (c *Server) Debug() *Server {
+	c.debug = true
+	return c
+}
+
 // Start starts the request loop for receiving messages and a configurable
 // number of Handler routines for message processing.
 func (c *Server) Start() {
+	c.Logger = &discardLogger{
+		Debug: c.debug,
+	}
 	go c.startReceiver()
 	go c.startProcessor()
 	go c.startErrorHandler()
